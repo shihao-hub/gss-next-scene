@@ -8,6 +8,28 @@ from samples import SAMPLES
 
 MAX_PREVIOUS_CHARS = 5000
 
+_active_clients = {"count": 0}
+
+
+class ClientCounterMiddleware:
+    """统计当前 WebSocket 连接数（即打开的客户端页面数），运行在主服务进程，跨客户端进程共享。"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "websocket":
+            await self.app(scope, receive, send)
+            return
+        _active_clients["count"] += 1
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _active_clients["count"] -= 1
+
+
+app.add_middleware(ClientCounterMiddleware)
+
 
 def copy_to_clipboard(text):
     ui.run_javascript(f"navigator.clipboard.writeText({json.dumps(text, ensure_ascii=False)})")
@@ -17,6 +39,11 @@ def copy_to_clipboard(text):
 @app.get("/health")
 async def health():
     return {"ok": True}
+
+
+@app.get("/client-count")
+async def client_count():
+    return {"count": _active_clients["count"]}
 
 
 @ui.page("/")
@@ -164,10 +191,30 @@ def index():
                     ui.button("下载 TXT", icon="download", on_click=lambda: ui.download(scene_editor.value.encode("utf-8"), filename="next-scene.txt")).props("outline")
 
     with ui.column().classes("w-full max-w-4xl mx-auto px-6 py-10 gap-10"):
-        with ui.row().classes("items-baseline gap-4 w-full"):
+        with ui.row().classes("items-center gap-4 w-full"):
             ui.label("下一场").classes("text-3xl font-bold")
             ui.label("把卡住的故事，推进成下一场戏").classes("text-lg text-gray-500")
             ui.button("重新开始", icon="restart_alt", on_click=start_over).props("outline").classes("ml-auto")
+            with ui.card().classes("flex flex-col items-center gap-0").style("padding: 0.25rem 0.9rem"):
+                client_count_label = ui.label("–").classes("text-2xl font-bold leading-tight")
+                ui.label("当前连接").classes("text-xs text-gray-400")
+
+        ui.add_body_html(f"""
+        <script>
+        (function () {{
+          function refresh() {{
+            fetch("/client-count")
+              .then(function (r) {{ return r.json(); }})
+              .then(function (d) {{
+                var el = document.getElementById("c{client_count_label.id}");
+                if (el) el.textContent = String(d.count);
+              }});
+          }}
+          setInterval(refresh, 2000);
+          refresh();
+        }})();
+        </script>
+        """)
 
         with ui.card().classes("w-full"):
             ui.label("1 · 交代你的故事").classes("text-xl font-semibold mb-2")
