@@ -84,7 +84,7 @@ def index():
         state["selected"] = index
         render_directions()
         render_scene_section()
-        ui.run_javascript("document.getElementById('scene-section')?.scrollIntoView({behavior:'smooth'})")
+        scene_section_card.run_method("scrollIntoView", {"behavior": "smooth"})
 
     def render_directions():
         directions_box.clear()
@@ -134,8 +134,8 @@ def index():
                         (adjustment.value or "").strip(),
                     )
                     state["scene"] = scene
-                    render_scene_section()
                     ui.notify("已生成正文，可直接编辑", type="positive")
+                    render_scene_section()
                 except LLMError as error:
                     ui.notify(str(error), type="negative")
                     write_btn.enable()
@@ -185,7 +185,8 @@ def index():
                 stale_badge = ui.badge("输入已修改，建议重新生成", color="warning").classes("text-xs")
             directions_box = ui.column().classes("w-full gap-4")
 
-        with ui.card().classes("w-full").props("id=scene-section"):
+        scene_section_card = ui.card().classes("w-full")
+        with scene_section_card:
             ui.label("3 · 写出下一场戏").classes("text-xl font-semibold")
             scene_box = ui.column().classes("w-full gap-3")
 
