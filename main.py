@@ -54,6 +54,17 @@ def index():
         save_inputs()
         ui.notify(f"已填入「{key}」示例，可以直接生成方向", type="info")
 
+    def start_over():
+        state.clear()
+        previous.value = ""
+        stuck.value = ""
+        constraints.value = ""
+        sample_select.value = None
+        render_directions()
+        render_scene_section()
+        update_stale_hint()
+        ui.notify("已清空全部内容，重新开始", type="info")
+
     async def on_generate():
         prev = (previous.value or "").strip()
         point = (stuck.value or "").strip()
@@ -156,6 +167,7 @@ def index():
         with ui.row().classes("items-baseline gap-4 w-full"):
             ui.label("下一场").classes("text-3xl font-bold")
             ui.label("把卡住的故事，推进成下一场戏").classes("text-lg text-gray-500")
+            ui.button("重新开始", icon="restart_alt", on_click=start_over).props("outline").classes("ml-auto")
 
         with ui.card().classes("w-full"):
             ui.label("1 · 交代你的故事").classes("text-xl font-semibold mb-2")
